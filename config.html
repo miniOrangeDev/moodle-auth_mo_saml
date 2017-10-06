@@ -1,0 +1,867 @@
+<?php
+// This file is part of miniOrange moodle plugin
+//
+// This plugin is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This library is contain overridden moodle method.
+ *
+ * Contains authentication method.
+ *
+ * @copyright   2017  miniOrange
+ * @category    authentication
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
+ * @package     mo_saml
+ */
+
+global $CFG;
+if (!isset($config->verifycustomer)) {
+    $config->verifycustomer = '';
+}
+if (!isset($config->adminemail)) {
+    $config->adminemail = '';
+}
+if (!isset($config->adminapikey)) {
+    $config->adminapikey = '';
+}
+if (!isset($config->customertoken)) {
+    $config->customertoken = '';
+}
+if (!isset($config->newregistration)) {
+    $config->newregistration = '';
+}
+if (!isset($config->registrationstatus)) {
+    $config->registrationstatus = '';
+}
+if (!isset($config->passwordmismatch)) {
+    $config->passwordmismatch = '';
+}
+if (!isset($config->hostname)) {
+    $config->hostname = '';
+}
+if (!isset($config->freeversion)) {
+    $config->freeversion = '';
+}
+if (!isset($config->transactionid)) {
+    $config->transactionid = '';
+}
+if (!empty($err['message'])) {
+    ?><div style="border-left: 3px solid red; background-color: #f1ffff; margin: 2px 0px; padding: 2px;">
+    <?php echo $err['message']; ?></div><?php
+}
+if (!empty($err['issuerurlempty'])) {
+    ?><div style="border-left: 3px solid red; background-color: #f1ffff; margin: 2px 0px; padding: 2px;">
+    <?php echo $err['issuerurlempty']; ?></div><?php
+}
+if (!empty($err['targeturlempty'])) {
+    ?><div style="border-left: 3px solid red; background-color: #f1ffff; margin: 2px 0px; padding: 2px;">
+    <?php echo $err['targeturlempty']; ?></div><?php
+}
+if (!empty($err['requiredfield'])) {
+    ?><div style="border-left: 3px solid red; background-color: #f1ffff; margin: 2px 0px; padding: 2px;">
+    <?php echo $err['requiredfield']; ?></div><?php
+}
+if (!empty($err['passwordlengtherr'])) {
+    ?><div style="border-left: 3px solid red; background-color: #f1ffff; margin: 2px 0px; padding: 2px;">
+    <?php echo $err['passwordlengtherr']; ?></div><?php
+}
+if (isset($_GET[ 'tab' ])) {
+    $active_tab = $_GET[ 'tab' ];
+} elseif (mo_saml_is_customer_registered_saml() && mo_saml_is_sp_configured()) {
+    $active_tab = 'general';
+} elseif (mo_saml_is_customer_registered_saml()) {
+    $active_tab = 'config';
+} else {
+    $active_tab = 'login';
+}
+?>
+<?php
+    if (!mo_saml_is_curl_installed()) {
+        ?>
+        <p><font color="#FF0000">(Warning: <a href="http://php.net/manual/en/curl.installation.php" target="_blank">
+        PHP cURL extension</a> is not installed or disabled)</font></p>
+        <?php
+    }
+
+    if (!mo_saml_is_openssl_installed()) {
+        ?>
+        <p><font color="#FF0000">(Warning: <a href="http://php.net/manual/en/openssl.installation.php" target="_blank">
+        PHP openssl extension</a> is not installed or disabled)</font></p>
+        <?php
+    }
+
+    if (!mo_saml_is_mcrypt_installed() && get_option('mo_saml_enable_cloud_broker')=='true') {
+        ?>
+            <p><font color="#FF0000">(Warning: <a href="http://php.net/manual/en/mcrypt.setup.php" target="_blank">
+            PHP Mcrypt extension</a> is not installed or disabled. You will not be able to login.)</font></p>
+        <?php
+    }
+?>
+<link rel="stylesheet" href="../auth/mo_saml/includes/css/styles.css" type="text/css">
+<table style="width:100%;">
+    <tr>
+        <h2 class="nav-tab-wrapper">
+        <?php if (!mo_saml_is_customer_registered_saml()) {
+    ?>
+        <a class="nav-tab <?php echo $active_tab == 'login' ? 'nav-tab-active' : ''; ?>"
+        href="auth_config.php?auth=mo_saml&tab=login">Account Setup</a>
+        <?php
+}?>
+        <a class="nav-tab <?php echo $active_tab == 'config' ? 'nav-tab-active' : ''; ?>"
+        href="auth_config.php?auth=mo_saml&tab=config">Identity Provider</a>
+        <a class="nav-tab <?php echo $active_tab == 'save' ? 'nav-tab-active' : ''; ?>"
+        href="auth_config.php?auth=mo_saml&tab=save">Service Provider</a>
+        <?php if (mo_saml_is_customer_registered_saml()) {
+        ?>
+        <a class="nav-tab <?php echo $active_tab == 'general' ? 'nav-tab-active' : ''; ?>"
+        href="auth_config.php?auth=mo_saml&tab=general">Sign in Settings</a>
+        <?php
+    }?>
+        <a class="nav-tab <?php echo $active_tab == 'opt' ? 'nav-tab-active' : ''; ?>"
+        href="auth_config.php?auth=mo_saml&tab=opt">Attribute/Role Mapping</a>
+        <a class="nav-tab <?php echo $active_tab == 'spt' ? 'nav-tab-active' : ''; ?>"
+        href="auth_config.php?auth=mo_saml&tab=spt">Support</a>
+        </h2>
+        <td>
+        <?php
+        if ($active_tab == 'save') {
+            mo_saml_apps_config_saml();
+        } elseif ($active_tab == 'opt') {
+            mo_saml_save_optional_config();
+        } elseif ($active_tab == 'spt') {
+            miniorange_support_saml();
+        } elseif ($active_tab == 'config') {
+            mo_saml_configuration_steps();
+        } elseif ($active_tab == 'general') {
+            mo_saml_general_login_page();
+        } else {
+            if ($config->verifycustomer == 'true') {
+                mo_saml_show_verify_password_page_saml();
+            } elseif (trim($config->adminemail) != '' &&
+                        trim($config->adminapikey) == '' &&
+                        $config->newregistration != 'true') {
+                mo_saml_show_verify_password_page_saml();
+            } elseif ($config->registrationstatus == 'MO_OTP_DELIVERED_SUCCESS_EMAIL' ||
+                    $config->registrationstatus == 'MO_OTP_DELIVERED_SUCCESS_PHONE' ||
+                    $config->registrationstatus == 'MO_OTP_VALIDATION_FAILURE_EMAIL' ||
+                    $config->registrationstatus == 'MO_OTP_VALIDATION_FAILURE_PHONE' ||
+                    $config->registrationstatus == 'MO_OTP_DELIVERED_FAILURE') {
+                mo_saml_show_otp_verification();
+            } elseif (! mo_saml_is_customer_registered_saml()) {
+                $config->passwordmismatch='';
+                mo_saml_show_new_registration_page_saml();
+            } else {
+                mo_saml_general_login_page();
+            }
+        }
+        ?>
+        <td>
+    </tr>
+</table>
+<?php
+function mo_saml_is_curl_installed()
+        {
+            if (in_array('curl', get_loaded_extensions())) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+function mo_saml_is_openssl_installed()
+{
+    if (in_array('openssl', get_loaded_extensions())) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+function mo_saml_is_mcrypt_installed()
+{
+    if (in_array('mcrypt', get_loaded_extensions())) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+function mo_saml_apps_config_saml()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->identityname)) {
+        $config->identityname = '';
+    }
+    if (!isset($config->loginurl)) {
+        $config->loginurl = '';
+    }
+    if (!isset($config->samlissuer)) {
+        $config->samlissuer = '';
+    }
+    if (!isset($config->samlxcertificate)) {
+        $config->samlxcertificate = '';
+    } ?>
+    <input type="hidden" name="option" value="save" />
+        <table style="width:100%;">
+        <tr>
+            <?php if (!mo_saml_is_customer_registered_saml()) {
+        ?>
+                <td colspan="2">
+                <div
+                style="display:block;margin-top:10px;color:red;background-color:rgba(251, 232, 0, 0.15);
+                padding:5px;border:solid 1px rgba(255, 0, 9, 0.36);">
+                Please <a href="auth_config.php?auth=mo_saml&tab=login">
+                Register or Login with miniOrange</a> to configure the miniOrange SAML Plugin.</div><br></td>
+            <?php
+    } ?>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <h4 style="margin-top:30px">Configure Service Provider
+                </h4>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">Enter the information gathered from your Identity Provider<br /><br /></td>
+        </tr>
+        <tr>
+            <td style="width:200px;"><strong>Identity Provider Name <span style="color:red;">*</span>:</strong></td>
+            <td>
+                <input name="identityname"  type="text" required
+                placeholder="Identity Provider name like ADFS, SimpleSAML, Salesforce"
+                style="width: 95%;" <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?>
+                value="<?php if ($config->identityname) {
+        echo $config->identityname;
+    } ?>" />
+            </td>
+        </tr>
+        <tr><td>&nbsp;</td></tr>
+        <tr>
+            <td><strong>IdP Entity ID or Issuer <span style="color:red;">*</span>:</strong></td>
+            <td>
+                <input name="samlissuer" required="true" type="text"
+                placeholder="Identity Provider Entity ID or Issuer"
+                style="width: 95%;" <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?>
+                value="<?php if ($config->samlissuer) {
+        echo $config->samlissuer;
+    } ?>" />
+            </td>
+        </tr>
+        <tr><td>&nbsp;</td></tr>
+        <tr>
+            <td><strong>SAML Login URL <span style="color:red;">*</span>:</strong></td>
+            <td>
+                <input name="loginurl" type="text"
+                placeholder="Single Sign On Service URL (HTTP-Redirect binding) of your IdP"
+                style="width: 95%;" required <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?>
+                value="<?php if ($config->loginurl) {
+        echo $config->loginurl;
+    } ?>"/>
+            </td>
+        </tr>
+        <tr><td>&nbsp;</td></tr>
+        <tr>
+            <td><strong>X.509 Certificate :</strong></td>
+            <td>
+                <textarea  rows="4" cols="5"
+                style="width:95%; border-radius: 4px; border-color: rgba(0, 0, 0, 0.13);" name="samlxcertificate"
+                placeholder="Copy and Paste the content from the downloaded certificate"
+                <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?> ><?php if ($config->samlxcertificate) {
+        echo $config->samlxcertificate;
+    } ?></textarea>
+            </td>
+        </tr>
+        <tr>
+            <td>&nbsp;</td>
+            <td><b>NOTE:</b> Format of the certificate:<br/>
+            <b>-----BEGIN CERTIFICATE-----<br/>
+            XXXXXXXXXXXXXXXXXXXXXXXXXXX<br/>
+            -----END CERTIFICATE-----</b></i><br/>
+        </tr>
+    <tr>
+        <td>  </td>
+        <td><input type="submit" name="submit" style="width:100px;" value="Save"
+        <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?>/>
+        &nbsp;<input type="button" name="test"
+        title="You can only test your Configuration after saving your Service Provider Settings."
+        onclick="show_test_window();"  value="Test configuration" <?php if (!mo_saml_is_sp_configured()) {
+        echo 'disabled';
+    } ?>/></td>
+    </tr>
+    </table>
+    <script>
+        function show_test_window() {
+        var myWindow = window.open("<?php echo $CFG->wwwroot."/auth/mo_saml/index.php".'/?option=testConfig'; ?>",
+        "TEST SAML IDP", "scrollbars=1 width=800, height=600");
+        }
+    </script>
+    <?php
+}
+function miniorange_support_saml()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml'); ?><h4 style="margin-top:30px">Support</h4>
+    <p>Need any help? We can help you with configuring your Identity Provider.
+    Just send us a query and we will get back to you soon.</p>
+        <input type="hidden" name="option" value="mo_saml_contact_us_query_option" />
+        <table style="width:100%;">
+            <tr>
+                <td>Email:</td>
+                <td><input style="width:80%" type="email" required name="mo_saml_contact_us_email"
+                value="<?php echo $config->email; ?>" placeholder="Enter your email"></td>
+            </tr>
+            <tr>
+                <td>Phone:</td>
+                <td><input type="tel" style="width:80%" pattern="[\+]\d{11,14}|[\+]\d{1,4}[\s]\d{9,10}"
+                name="mo_saml_contact_us_phone" value="<?php echo $config->phone; ?>" placeholder="Enter your phone"></td>
+            </tr>
+            <tr>
+                <td>Query:</td>
+                <td><textarea  required name="mo_saml_contact_us_query" placeholder="Write your query here" rows="4"
+                style="width:80%; border-radius: 4px; border-color: rgba(0, 0, 0, 0.13);" ></textarea></td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>
+                <td><input type="submit" name="submit" style="margin:15px; width:120px;" /></td>
+            </tr>
+        </table>
+<?php
+}
+function mo_saml_save_optional_config()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->accountmatcher)) {
+        $config->accountmatcher = 'email';
+    }
+    if (!isset($config->usernamemap)) {
+        $config->usernamemap = '';
+    }
+    if (!isset($config->emailmap)) {
+        $config->emailmap = '';
+    }
+    if (!isset($config->firstnamemap)) {
+        $config->firstnamemap = '';
+    }
+    if (!isset($config->lastnamemap)) {
+        $config->lastnamemap = '';
+    }
+    if (!isset($config->rolemap)) {
+        $config->rolemap = '';
+    }
+    if (!isset($config->defaultrolemap)) {
+        $config->defaultrolemap = '';
+    } ?><input type="hidden" name="attribute" value="attribute_mapping" />
+    <table style="width:100%">
+    <tr>
+        <?php if (!mo_saml_is_customer_registered_saml()) {
+        ?>
+            <td colspan="2">
+            <div
+            style="display:block;margin-top:10px;color:red;background-color:rgba(251, 232, 0, 0.15);
+            padding:5px;border:solid 1px rgba(255, 0, 9, 0.36);">
+            Please <a href="auth_config.php?auth=mo_saml&tab=login">
+            Register or Login with miniOrange</a> to configure the miniOrange SAML Plugin.</div><br></td>
+        <?php
+    } ?>
+    </tr>
+    <tr><td colspan="2">
+        <h4 style="margin-top:30px";>ATTRIBUTE MAPPING</h4>
+        </td>
+    </tr>
+    <tr>
+        <td style="width:200px;"><strong>Login/Create Moodle account by: </strong></td>
+        <td>
+            <select name="accountmatcher">
+                <option value="email" <?php if ($config->accountmatcher == 'email') {
+        echo 'selected="selected"';
+    } ?>; >
+                Email</option>
+                <option value="username" <?php if ($config->accountmatcher == 'username') {
+        echo 'selected="selected"';
+    } ?>;>
+                Username</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>&nbsp;</td>
+        <td><i>Users in Moodle will be searched (existing moodle users) or created (new users) based on this attribute.
+        Use Email by default.</i></td>
+      </tr>
+        <tr>
+        <td style="width:150px;"><span style="color:red;">*</span><strong>Username (required):</strong></td>
+        <td>
+            
+            <b>NameID</b>
+        </td>
+    </tr>
+    <tr>
+        <td><span style="color:red;">*</span><strong>Email (required):</strong></td>
+        <td>
+            
+            <b>NameID</b>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>First Name:</strong></td>
+        <td>
+            <input name="firstnamemap" type="text" placeholder="Enter attribute name for First Name"
+            style="width: 350px;" value="<?php if ($config->firstnamemap) {
+        echo $config->firstnamemap;
+    } ?>" />
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Last Name:</strong></td>
+        <td>
+            <input name="lastnamemap" type="text" placeholder="Enter attribute name for Last Name"
+            style="width: 350px;" value="<?php if ($config->lastnamemap) {
+        echo $config->lastnamemap;
+    } ?>" />
+        </td>
+    </tr>
+    <tr>
+        <td>&nbsp;</td>
+        <td><input type="submit" name="submit" style="width:100px;" value="Save"
+        <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?>/> &nbsp; </td>
+    </tr>
+    </table>
+    <hr>
+    <input type="hidden" name="option" value="opt" />
+    <table style="width:100%">
+    <tr><td colspan="2">
+        <h4 style="margin-top:30px">ROLE MAPPING</h4>
+        </td>
+    </tr>
+    <tr><td colspan="2"><b>NOTE: </b>Role will be assigned only to new users.
+    Existing Moodle users' role remains same.
+    <br><br><b>This feature is availabe in Premium plugin</b><br /><br/></td></tr>
+    <tr>
+        <td><strong>Default Role:</strong></td>
+        <td>
+        <select name="defaultrolemap" disabled>
+            <option value="manager" <?php if ($config->defaultrolemap == 'manager') {
+        echo 'selected="selected"';
+    } ?>;>
+            Manager</option>
+            <option value="coursecreator" <?php if ($config->defaultrolemap == 'coursecreator') {
+        echo 'selected="selected"';
+    } ?>; >
+            Course creator</option>
+            <option value="editingteacher" <?php if ($config->defaultrolemap == 'editingteacher') {
+        echo 'selected="selected"';
+    } ?>;>
+            Teacher</option>
+            <option value="teacher" <?php if ($config->defaultrolemap == 'teacher') {
+        echo 'selected="selected"';
+    } ?>;>
+            Non-editing teacher</option>
+            <option value="student" <?php if ($config->defaultrolemap == 'student') {
+        echo 'selected="selected"';
+    } ?>;>
+            Student</option>
+            <option value="user" <?php if ($config->defaultrolemap == 'user') {
+        echo 'selected="selected"';
+    } ?>;>
+            Authenticated user</option>
+        </select>
+        </td>
+    </tr>
+    <tr>
+        <td>&nbsp;</td>
+        <td><input type="submit" name="submit" style="width:100px;" value="Save"
+        <?php if (!mo_saml_is_customer_registered_saml()) {
+        echo 'disabled';
+    } ?>/> &nbsp; </td>
+    </tr>
+    </table>
+    <?php
+}
+function mo_saml_configuration_steps()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml'); ?><input type="hidden" name="option" value="config" />
+        <table width="98%">
+        <tr>
+            <?php if (!mo_saml_is_customer_registered_saml()) {
+        ?>
+                <td colspan="2">
+                <div
+                style="display:block;margin-top:10px;color:red;background-color:rgba(251, 232, 0, 0.15);
+                padding:5px;border:solid 1px rgba(255, 0, 9, 0.36);">
+                Please <a href="auth_config.php?auth=mo_saml&tab=login">
+                Register or Login with miniOrange</a> to configure the miniOrange SAML Plugin.</div><br></td>
+            <?php
+    } ?>
+        </tr>
+        <tr><td>
+            <h4 style="margin-top:30px"><b>Step 1:</b></h4>
+            You will need the following information to configure your IdP. Copy it and keep it handy:
+            <table border="1"
+            style="background-color:#FFFFFF; border:1px solid #CCCCCC; padding:0px 0px 0px 10px;
+            margin:2px; border-collapse: collapse; width:98%">
+                <tr>
+                    <td style="width:40%; padding: 15px;"><b>SP-EntityID / Issuer</b></td>
+                                            <td style="width:60%; padding: 15px;"><?php echo $CFG->wwwroot; ?></td>
+                </tr>
+                <tr>
+                    <td style="width:40%; padding: 15px;"><b>ACS (AssertionConsumerService) URL</b></td>
+                                                <td style="width:60%;  padding: 15px;">
+                                                <?php echo $CFG->wwwroot."/auth/mo_saml/index.php"; ?></td>
+                </tr>
+                <tr>
+                    <td style="width:40%; padding: 15px;"><b>Audience URI</b></td>
+                                            <td style="width:60%; padding: 15px;">
+                                            <?php echo $CFG->wwwroot; ?></td>
+                </tr>
+                <tr>
+                    <td style="width:40%; padding: 15px;"><b>NameID format</b></td>
+                                            <td style="width:60%; padding: 15px;">
+                                            urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</td>
+                </tr>
+            </table>
+            <p style="text-align: center;font-size: 13pt;font-weight: bold;">OR</p>
+            <p>Provide this metadata URL to your Identity Provider:</p>
+            </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <p><h4><b>Step 2:</b></h4>
+                        With the help of information given in <b>Step 1</b>, configure your IdP. Then come back to <b>Step 3</b>.
+                        <br/>
+                        <a href="http://miniorange.com/moodle-single-sign-on-(sso)"
+                        target='_blank'>Click Here to see the Guide for Configuring <b>miniOrange</b> as IdP.</a>
+                    </p>
+
+                    If you can't find your Idp in this list, write us the name of your Idp via <b>support form</b> on right.
+
+                    <p><b>For more help, checkout the Help section.</b></p>
+                </td>
+            </tr>
+            <tr>
+            <td colspan="2">
+            <h4><b>Step 3:</b></h4>Assuming that you are now done with Step 2,
+            please note down the following information from your IdP admin screen and
+            keep it handy to configure your Service provider.
+            <ol>
+                <li><b>X.509 certificate</b></li>
+                <li><b>SAML Login URL (Single Sign On URL)</b></li>
+                <li><b>IdP Entity ID (IdP Issuer)</b></li>
+                <li><b>Is Response signed</b> by your IdP?</li>
+                <li><b>Is Assertion signed</b> by your IdP?</li>
+                </li>
+            </ol>
+            <input type="checkbox"
+            onchange="window.location='<?php echo $CFG->wwwroot; ?>/admin/auth_config.php?auth=mo_saml&tab=save'" />
+            Check this option if you have the above information. You will be redirected to configure the Service Provider.<br>
+        </td>
+        </tr>
+    </table>
+    <?php
+}
+function mo_saml_general_login_page()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->enableloginredirect)) {
+        $config->enableloginredirect = '';
+
+    }
+    if (!isset($config->enablebackdoor)) {
+        $config->enablebackdoor = '';
+    } ?><input type="hidden" name="option" value="general" />
+    <table style="width:100%">
+    <tr>
+        <?php if (!mo_saml_is_customer_registered_saml()) {
+        ?>
+            <td colspan="2">
+            <div
+            style="display:block;margin-top:10px;color:red;background-color:rgba(251, 232, 0, 0.15);
+            padding:5px;border:solid 1px rgba(255, 0, 9, 0.36);">
+            Please <a href="auth_config.php?auth=mo_saml&tab=login">
+            Register or Login with miniOrange</a> to configure the miniOrange SAML Plugin.</div><br></td>
+        <?php
+    } ?>
+    </tr>
+    <tr>
+        <td colspan="2">
+            <h4 style="margin-top:30px">Enable Authentication Plugin</h4>
+        </td>
+    </tr>
+    <tr><td>Follow these steps to enable miniOrange SAML SSO Authentication plugin</td></tr>
+    <tr>
+    <td>
+    <ul>
+      <li><a href="<?php echo $CFG->wwwroot; ?>/admin/settings.php?section=manageauths"
+      target="_blank"> Click here</a> to go to <b>Manage authentication</b> page.</li>
+      <li>Enable the plugin by clicking on the eye icon next to the plugin's name under the Enable column.</li>
+      <li>Set the priority of the plugin by clicking the up arrow under the Up/Down column.</li>
+    </ul>
+    </td>
+    </tr>
+    </table>
+    <?php
+}
+function mo_saml_show_new_registration_page_saml()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->email)) {
+        $config->email = '';
+    }
+    if (!isset($config->company)) {
+        $config->company = '';
+    }
+    if (!isset($config->regfirstname)) {
+        $config->regfirstname = '';
+    }
+    if (!isset($config->reglastname)) {
+        $config->reglastname = '';
+    }
+    if (!isset($config->phone)) {
+        $config->phone = '';
+    }
+    if (!isset($config->password)) {
+        $config->password = '';
+    }
+    if (!isset($config->confirmpassword)) {
+        $config->confirmpassword = '';
+    } ?><input type="hidden" name="option" value="mo_saml_register_customer" />
+    <table width="98%">
+    <tr>
+        <td colspan="2">
+            <h4 style="margin-top:30px">Register with miniOrange</h4>
+        </td>
+    </tr>
+    <tr>
+        <td><b><font color="#FF0000">*</font>Email:</b></td>
+        <td><input name="email" type="email" style="width: 95%;"
+        value="<?php if ($config->email) {
+        echo $config->email;
+    } ?>" required placeholder="Email"/></td>
+    </tr>
+    <tr>
+        <td><b><font color="#FF0000">*</font>Company/Organisation:</b></td>
+        <td><input name="company" type="text" style="width: 95%;"
+        value="<?php if ($config->company) {
+        echo $config->company;
+    } ?>" required="true" placeholder="Your company name"/></td>
+    </tr>
+    <tr>
+        <td><b>First Name:</b></td>
+        <td><input  type="text" name="regfirstname" style="width: 95%;"
+        value="<?php if ($config->regfirstname) {
+        echo $config->regfirstname;
+    } ?>"
+            placeholder="First Name" /></td>
+    </tr>
+    <tr>
+        <td><b>Last Name:</b></td>
+        <td><input  type="text" name="reglastname" style="width: 95%;"
+        value="<?php if ($config->reglastname) {
+        echo $config->reglastname;
+    } ?>"
+            placeholder="Last Name" /></td>
+    </tr>
+    <tr>
+        <td><b>Phone number:</b></td>
+        <td><input type="tel"  name="phone" style="width: 95%;"
+        value="<?php if ($config->phone) {
+        echo $config->phone;
+    } ?>"
+            pattern="[\+]\d{11,14}|[\+]\d{1,4}([\s]{0,1})(\d{0}|\d{9,10})"
+            placeholder="Phone with country code eg. +1xxxxxxxxxx" /></td>
+    </tr>
+        <tr>
+            <td></td>
+            <td>We will call only if you need support.</td>
+        </tr>
+    <tr>
+        <td><b><font color="#FF0000">*</font>Password:</b></td>
+        <td><input type="password"
+            name="password" style="width: 95%;" value="<?php if ($config->password) {
+        echo $config->password;
+    } ?>"
+            placeholder="Choose your password (Min. length 6)" /></td>
+    </tr>
+    <tr>
+        <td><b><font color="#FF0000">*</font>Confirm Password:</b></td>
+        <td><input type="password"
+            name="confirmpassword" style="width: 95%;"
+            value="<?php if ($config->confirmpassword) {
+        echo $config->confirmpassword;
+    } ?>"
+            placeholder="Confirm your password" /></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td><input type="submit" name="submit" style="width:100px;" value="Save"/></td>
+    </tr>
+    </table>
+    <?php
+}
+function mo_saml_show_verify_password_page_saml()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->email)) {
+        $config->email = '';
+    }
+    if (!isset($config->password)) {
+        $config->password = '';
+    } ?><input type="hidden" id="verify_user" name="option" value="verify_user" />
+    <table width="98%">
+    <tr>
+        <td colspan="2">
+            <h4 style="margin-top:30px">Login with miniOrange</h4>
+        </td>
+    </tr>
+    <tr>
+        <td><b><font color="#FF0000">*</font>Email:</b></td>
+        <td><input type="email" id="check" name="email" required="true"
+        placeholder="person@example.com" value="<?php if ($config->email) {
+        echo $config->email;
+    } ?>" /></td>
+    </tr>
+    <tr>
+        <td><b><font color="#FF0000">*</font>Password:</b></td>
+        <td><input id="check" required type="password" name="password"  placeholder="Choose your password" /></td>
+    </tr>
+    <tr>
+        <td>&nbsp;</td>
+        <td>
+        <button onclick="myfunctiona()"/> submit </button>
+        <button onclick="myfunctionb()"/>Back</button></td>
+    </tr>
+    </table>
+<script>
+function myfunctiona() {
+    document.getElementById("verify_user").value='verifycustomer';
+}
+function myfunctionb() {
+    document.getElementById("verify_user").value='mo_saml_go_back';
+    document.getElementsByName("email")[0].removeAttribute("required");
+    document.getElementsByName("password")[0].removeAttribute("required");
+}
+</script>
+    <?php
+}
+function mo_saml_show_otp_verification()
+{
+    global $CFG;
+    $config = get_config('auth/mo_saml'); ?><input type="hidden" id="validate_otp" name="option" value="validate_otp" />
+        <table>
+            <h4 style="margin-top:30px">Verify Your Email</h4>
+            <tr>
+                <td><b><font color="#FF0000">*</font>Enter OTP:</b></td>
+                <td colspan="2">
+                <input autofocus="true" type="text" name="otp_token" required="true"
+                placeholder="Enter OTP" style="width:61%;" pattern="[0-9]{6,8}"/>
+                 &nbsp;<button style="cursor:pointer;"
+                 onclick="myfunctionc('<?php echo $config->registrationstatus ; ?>')">Resend OTP</button></td>
+            </tr>
+            <tr><td colspan="3"></td></tr>
+            <tr>
+                <td>&nbsp;</td>
+                <td><input type="submit" onclick="myfunctiona()" name="submit" value="Validate OTP" />&nbsp;
+                <button onclick="myfunctionb()" >Back</button></td>
+                <td>&nbsp;</td>
+            </tr>
+        </table>
+        <?php if ($config->registrationstatus == 'MO_OTP_DELIVERED_SUCCESS_EMAIL' ||
+                $config->registrationstatus == 'MO_OTP_VALIDATION_FAILURE_EMAIL') {
+        ?>
+        <table>
+        <tr><td>
+                    <h3>I did not recieve any email with OTP . What should I do ?</h3>
+                         If you can't see the email from miniOrange in your mails,
+                         please check your <b>SPAM</b> folder. If you don't see an email even in the SPAM folder,
+                         verify your identity with our alternate method.
+                         <br><br>
+                            <b>Enter your valid phone number here and verify your
+                            identity using one time passcode sent to your phone.</b><br><br>
+                            <input type="tel" id="phone_contact" style="width:40%;"
+                                    pattern="[\+]\d{11,14}|[\+]\d{1,4}([\s]{0,1})(\d{0}|\d{9,10})" name="phone"
+                                    title="Phone with country code eg. +1xxxxxxxxxx" required
+                                    placeholder="Phone with country code eg. +1xxxxxxxxxx"
+                                    value="<?php echo $config->phone; ?>" />
+                            <button onclick="myfunctiond()" />Send OTP</button>
+        </td></tr>
+        </table>
+        <?php
+    } ?>
+<script>
+function myfunctiona() {
+    document.getElementById("validate_otp").value='mo_saml_validate_otp';
+}
+function myfunctiond() {
+    document.getElementById("validate_otp").value='mo_saml_register_with_phone_option';
+    document.getElementsByName("otp_token")[0].removeAttribute("required");
+}
+function myfunctionb() {
+    document.getElementById("validate_otp").value='mo_saml_go_back';
+    document.getElementsByName("otp_token")[0].removeAttribute("required");
+}
+function myfunctionc(p) {
+    if (p == 'MO_OTP_DELIVERED_SUCCESS_EMAIL' || p == 'MO_OTP_VALIDATION_FAILURE_EMAIL') {
+    document.getElementById("validate_otp").value='mo_saml_resend_otp_email';
+    } else {
+    document.getElementById("validate_otp").value='mo_saml_resend_otp_phone';
+    }
+    document.getElementsByName("otp_token")[0].removeAttribute("required");
+}
+</script>
+<?php
+}
+function mo_saml_is_customer_registered_saml()
+{
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->email)) {
+        $config->email = '';
+    }
+    if (!isset($config->admincustomerkey)) {
+        $config->admincustomerkey = '';
+    }
+    $email          = $config->email;
+    $customerkey    = $config->admincustomerkey;
+    if (! $email || ! $customerkey || ! is_numeric(trim($customerkey))) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+function mo_saml_is_sp_configured()
+{
+    $config = get_config('auth/mo_saml');
+    if (!isset($config->loginurl)) {
+        $config->loginurl = '';
+    }
+    $loginurl = $config->loginurl;
+    if (!empty($loginurl)) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
