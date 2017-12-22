@@ -18,46 +18,125 @@
  * This library is miniOrange Authentication Service.
  *
  * @copyright   2017  miniOrange
- * @category    authentication
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 defined('MOODLE_INTERNAL') || die();
 require_once('utilities.php');
+
 /**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   assertion
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class saml_assertion_class
+ * @package     auth_mo_saml
+ * @copyright   2017  miniOrange
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
  */
 class saml_assertion_class {
+    /**
+     * @var string
+     */
     private $id;
+    /**
+     * @var int
+     */
     private $issueinstant;
+    /**
+     * @var string
+     */
     private $issuer;
+    /**
+     * @var
+     */
     private $nameid;
+    /**
+     * @var
+     */
     private $encryptednameid;
+    /**
+     * @var
+     */
     private $encryptedattribute;
+    /**
+     * @var
+     */
     private $encryptionkey;
+    /**
+     * @var
+     */
     private $notbefore;
+    /**
+     * @var
+     */
     private $notonorafter;
+    /**
+     * @var
+     */
     private $validaudiences;
+    /**
+     * @var
+     */
     private $sessionnotonorafter;
+    /**
+     * @var
+     */
     private $sessionindex;
+    /**
+     * @var false|string
+     */
     private $authninstant;
+    /**
+     * @var
+     */
     private $authncontextclassref;
+    /**
+     * @var
+     */
     private $authncontextdecl;
+    /**
+     * @var
+     */
     private $authncontextdeclref;
+    /**
+     * @var array
+     */
     private $authenticatingauthority;
+    /**
+     * @var array
+     */
     private $attributes;
+    /**
+     * @var string
+     */
     private $nameformat;
+    /**
+     * @var
+     */
     private $signaturekey;
+    /**
+     * @var array
+     */
     private $certificates;
+    /**
+     * @var
+     */
     private $signaturedata;
+    /**
+     * @var
+     */
     private $requiredencattributes;
+    /**
+     * @var array
+     */
     private $subjectconfirmation;
+    /**
+     * @var bool
+     */
     protected $wassignedatconstruction = false;
+
+    /**
+     * saml_assertion_class constructor
+     * @param DOMElement $xml
+     * @throws Exception
+     */
     public function __construct(DOMElement $xml = null) {
         $this->id = utilities::generate_id();
         $this->issueinstant = utilities::generate_timestamp();
@@ -675,7 +754,7 @@ class saml_assertion_class {
      *
      * This may be null, in which case all audiences are allowed.
      *
-     * @param array|null $validaudiences The allowed audiences.
+     * @param array $validaudiences The allowed audiences.
      */
     public function set_valid_audiences(array $validaudiences = null) {
         $this->validaudiences = $validaudiences;
@@ -833,7 +912,7 @@ class saml_assertion_class {
      * Get the authentication context declaration.
      *
      * See:
-     * @url http://docs.oasis-open.org/security/saml/v2.0/saml-authn-context-2.0-os.pdf
+     * @link http://docs.oasis-open.org/security/saml/v2.0/saml-authn-context-2.0-os.pdf
      *
      * @return \SAML2_XML_Chunk|null
      */
@@ -881,9 +960,7 @@ class saml_assertion_class {
 
     /**
      * Set the authenticatingauthority
-     *
-     *
-     * @param array.
+     * @param array[] $authenticatingauthority
      */
     public function set_authenticating_authority($authenticatingauthority) {
         $this->authenticatingauthority = $authenticatingauthority;
@@ -962,7 +1039,7 @@ class saml_assertion_class {
      *
      * If the key is null, the assertion will be sent unsigned.
      *
-     * @param xml_security_key|null $signaturekey
+     * @param xml_security_key $signaturekey
      */
     public function set_signature_key(xml_security_key $signaturekey = null) {
         $this->signaturekey = $signaturekey;
@@ -978,10 +1055,10 @@ class saml_assertion_class {
         return $this->encryptionkey;
     }
 
+
     /**
      * Set the private key we should use to encrypt the attributes.
-     *
-     * @param xml_security_key|null $Key
+     * @param xml_security_key $key
      */
     public function set_encryption_key(xml_security_key $key = null) {
         $this->encryptionkey = $key;
@@ -1007,11 +1084,16 @@ class saml_assertion_class {
         return $this->certificates;
     }
 
+    /**
+     * Retrieve the signature data from assertion.
+     * @return mixed
+     */
     public function get_signature_data() {
         return $this->signaturedata;
     }
 
     /**
+     * Returns the value of wassignedatconstruction variable
      * @return bool
      */
     public function get_was_signed_at__construction() {
@@ -1021,8 +1103,8 @@ class saml_assertion_class {
     /**
      * Convert this assertion to an XML element.
      *
-     * @param  DOMNode|null $parentelement The DOM node the assertion should be created in.
-     * @return DOMElement   This assertion.
+     * @param  DOMNode $parentelement The DOM node the assertion should be created in.
+     * @return DOMElement This assertion
      */
     public function to_xml(DOMNode $parentelement = null) {
         if ($parentelement === null) {

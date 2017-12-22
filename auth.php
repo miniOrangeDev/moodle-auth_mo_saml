@@ -20,38 +20,49 @@
  * Contains authentication method.
  *
  * @copyright   2017  miniOrange
- * @category    authentication
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 
+defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once('functions.php');
 require_once('customer.php');
 require_once($CFG->libdir.'/authlib.php');
+
 /**
- * This class contains authentication plugin method
- *
- * @package    mo_saml
- * @category   authentication
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class auth_plugin_mo_saml
+ * @package     auth_mo_saml
+ * @copyright   2017  miniOrange
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
  */
 class auth_plugin_mo_saml extends auth_plugin_base {
-    // Checking the value coming into this method is valid and empty.
-    public function mo_saml_check_empty_or_null( $value ) {
+    /**
+     * Checking the value coming into this method is valid and empty.
+     * @param string $value
+     * @return bool
+     */
+    public function mo_saml_check_empty_or_null($value ) {
         if ( ! isset( $value ) || empty( $value ) ) {
             return true;
         }
         return false;
     }
-    // Constructor which has authtype, roleauth, and config variable initialized.
+
+    /**
+     * Constructor which has authtype, roleauth, and config variable initialized.
+     * auth_plugin_mo_saml constructor.
+     */
     public function __construct() {
         $this->authtype = 'mo_saml';
         $this->roleauth = 'auth_mo_saml';
         $this->config = get_config('auth/mo_saml');
     }
-    // Checking curl installed or not. Return 1 if if present otherwise 0.
+
+    /**
+     * Checking curl installed or not. Return 1 if if present otherwise 0.
+     * @return int
+     */
     public function mo_saml_is_curl_installed() {
         if (in_array  ('curl', get_loaded_extensions())) {
             return 1;
@@ -59,7 +70,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
             return 0;
         }
     }
-    // Checking openssl installed or not. Return 1 if if present otherwise 0.
+
+    /**
+     * Checking openssl installed or not. Return 1 if if present otherwise 0.
+     * @return int
+     */
     public function mo_saml_is_openssl_installed() {
         if (in_array  ('openssl', get_loaded_extensions())) {
             return 1;
@@ -67,7 +82,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
             return 0;
         }
     }
-    // Checking mcrypt installed or not. Return 1 if if present otherwise 0.
+
+    /**
+     * Checking mcrypt installed or not. Return 1 if if present otherwise 0.
+     * @return int
+     */
     public function mo_saml_is_mcrypt_installed() {
         if (in_array  ('mcrypt', get_loaded_extensions())) {
             return 1;
@@ -75,7 +94,13 @@ class auth_plugin_mo_saml extends auth_plugin_base {
             return 0;
         }
     }
-    // User login return boolean value after checking username and password combination.
+
+    /**
+     * User login return boolean value after checking username and password combination.
+     * @param string $username
+     * @param string $password
+     * @return bool
+     */
     public function user_login($username, $password) {
         global $SESSION;
         if (isset($SESSION->mo_saml_attributes)) {
@@ -83,13 +108,16 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         }
         return false;
     }
-    /*
-    *function get_userinfo() called from index.php
-    *Its purpose to rectify attributes coming froms saml with mapped attributes.
-    *$samlattributes variable assigned by $SESSION->mo_saml_attributes which priviously saved in SESSION variable in index.php
-    *get_attributes() method called to get all attributes variable mapped in plugin.
-    *It will return $user array in which all attributes value according to mapped value.
-    */
+
+    /**
+     * function get_userinfo() called from index.php
+     * Its purpose to rectify attributes coming froms saml with mapped attributes.
+     * $samlattributes variable assigned by $SESSION->mo_saml_attributes which priviously saved in SESSION variable in index.php
+     * get_attributes() method called to get all attributes variable mapped in plugin.
+     * It will return $user array in which all attributes value according to mapped value.
+     * @param null $username
+     * @return array|bool
+     */
     public function get_userinfo($username = null) {
         global $SESSION;
         $samlattributes = $SESSION->mo_saml_attributes;
@@ -152,7 +180,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         }
         return $user;
     }
-    // Function get_attributes() called when we want mapped attributes variables in plugin.
+
+    /**
+     * Function get_attributes() called when we want mapped attributes variables in plugin.
+     * @return array
+     */
     public function get_attributes() {
         $firstname = array_key_exists('firstnamemap', $this->config) ? $this->config->firstnamemap : '';
         $lastname = array_key_exists('lastnamemap', $this->config) ? $this->config->lastnamemap : '';
@@ -167,7 +199,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         );
         return $attributes;
     }
-    // Here we are assigning  role to user which is selected in role mapping.
+
+    /**
+     * Here we are assigning  role to user which is selected in role mapping.
+     * @return string
+     */
     public function obtain_roles() {
         global $SESSION;
         $roles = 'Manager';
@@ -176,7 +212,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         }
         return $roles;
     }
-    // Sync roles assigne the role for new user if role mapping done in default role.
+
+    /**
+     * Sync roles assigne the role for new user if role mapping done in default role.
+     * @param stdClass $user
+     */
     public function sync_roles($user) {
         global $CFG, $DB;
         $newrole = $this->obtain_roles();
@@ -196,27 +236,48 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         $assignedrole = $DB->get_record('role', array('shortname' => $role), '*', MUST_EXIST);
         role_assign($assignedrole->id, $user->id, $syscontext);
     }
-    // Returns true if this authentication plugin is internal.
-    // Internal plugins use password hashes from Moodle user table for authentication.
+
+    /**
+     * Returns true if this authentication plugin is internal.
+     * Internal plugins use password hashes from Moodle user table for authentication.
+     * @return bool
+     */
     public function is_internal() {
         return false;
     }
-    // Indicates if password hashes should be stored in local moodle database.
-    // This function automatically returns the opposite boolean of what is_internal() returns.
-    // Returning true means MD5 password hashes will be stored in the user table.
-    // Returning false means flag 'not_cached' will be stored there instead.
+
+    /**
+     * Indicates if password hashes should be stored in local moodle database.
+     * This function automatically returns the opposite boolean of what is_internal() returns.
+     * Returning true means MD5 password hashes will be stored in the user table.
+     * Returning false means flag 'not_cached' will be stored there instead.
+     * @return bool
+     */
     public function prevent_local_passwords() {
         return true;
     }
-    // Returns true if this authentication plugin can change users' password.
+
+
+    /**
+     * Returns true if this authentication plugin can change users' password.
+     * @return bool
+     */
     public function can_change_password() {
         return false;
     }
-    // Returns true if this authentication plugin can edit the users' profile.
+
+    /**
+     * Returns true if this authentication plugin can edit the users' profile.
+     * @return bool
+     */
     public function can_edit_profile() {
         return true;
     }
-    // Hook for overriding behaviour of login page.
+
+
+    /**
+     * Hook for overriding behaviour of login page.
+     */
     public function loginpage_hook() {
         global $CFG;
         $CFG->nolastloggedin = true;
@@ -229,7 +290,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
             <?php
 
     }
-    // Hook for overriding behaviour of logout page.
+
+
+    /**
+     * Hook for overriding behaviour of logout page.
+     */
     public function logoutpage_hook() {
         global $SESSION, $CFG;
         $logouturl = $CFG->wwwroot.'/login/index.php?saml_sso=false';
@@ -237,13 +302,25 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         set_moodle_cookie('nobody');
         redirect($logouturl);
     }
-    // Prints a form for configuring this authentication plugin.
-    // It's called from admin/auth.php, and outputs a full page with a form for configuring this plugin.
+
+    /**
+     * Prints a form for configuring this authentication plugin.
+     * It's called from admin/auth.php, and outputs a full page with a form for configuring this plugin.
+     * @param string $config
+     * @param string $err
+     * @param string $userfields
+     */
     public function config_form($config, $err, $userfields) {
         include('config.html');
         // Including page for setting up the plugin data.
     }
-    // Validate form data.
+
+
+    /**
+     * Validate form data.
+     * @param object $form
+     * @param object $err
+     */
     public function validate_form($form, &$err) {
         // Registeration of plugin also submitting a form which is validating here.
         if (isset($_POST['option']) and $_POST[ 'option' ] == 'mo_saml_register_customer') {
@@ -278,7 +355,13 @@ class auth_plugin_mo_saml extends auth_plugin_base {
             }
         }
     }
-    // Processes and stores configuration data for this authentication plugin.
+
+
+    /**
+     * Processes and stores configuration data for this authentication plugin.
+     * @param object $config
+     * @return bool
+     */
     public function process_config($config) {
         global $CFG;
         // CFG contain base url for the moodle.
@@ -537,7 +620,13 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         }
         return true;
     }
-    public function sanitize_certificate( $certificate ) {
+
+    /**
+     * Sanitize the certificate with "BEGIN" and "END" tags
+     * @param mixed|null|string|string[] $certificate
+     * @return mixed|null|string|string[]
+     */
+    public function sanitize_certificate($certificate ) {
         $certificate = preg_replace("/[\r\n]+/", '', $certificate);
         $certificate = str_replace( "-", '', $certificate );
         $certificate = str_replace( "BEGIN CERTIFICATE", '', $certificate );
@@ -547,6 +636,10 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         $certificate = "-----BEGIN CERTIFICATE-----\r\n" . $certificate . "-----END CERTIFICATE-----";
         return $certificate;
     }
+
+    /**
+     * Creates new customer entry
+     */
     public function create_customer() {
         global $CFG;
         $customer = new customer_saml();
@@ -566,7 +659,11 @@ class auth_plugin_mo_saml extends auth_plugin_base {
         }
         set_config('password', '', 'auth/mo_saml');
     }
-    // Getting customer which is already created at host for login purpose.
+
+
+    /**
+     * Getting customer which is already created at host for login purpose.
+     */
     public function get_current_customer() {
         global $CFG;
         $customer = new customer_saml();
@@ -589,7 +686,10 @@ class auth_plugin_mo_saml extends auth_plugin_base {
             set_config('newregistration', '', 'auth/mo_saml');
         }
     }
-    // The page show in test configuration page.
+
+    /**
+     * The page show in test configuration page.
+     */
     public function test_settings() {
         global $CFG;
         echo ' <iframe style="width: 690px;height: 790px;" src="'

@@ -52,10 +52,14 @@
  * @author     Robert Richards <rrichards@cdatazone.org>
  * @copyright  2007-2013 Robert Richards <rrichards@cdatazone.org>
  * @license    http://www.opensource.org/licenses/bsd-license.php  BSD License
- * @version    1.3.1
- * @package    mo_saml
+ * @package    auth_mo_saml
  */
 defined('MOODLE_INTERNAL') || die();
+/**
+ * sort and add attributes
+ * @param object $element
+ * @param array[] $aratts
+ */
 function sort_and_add_attrs($element, $aratts) {
     $newatts = array();
     foreach ($aratts as $attnode) {
@@ -67,7 +71,12 @@ function sort_and_add_attrs($element, $aratts) {
     }
 }
 
-// Helper function.
+/**
+ * Helper function.
+ * @param DOMDocument $tree
+ * @param DOMElement $element
+ * @param bool $withcomments
+ */
 function canonical($tree, $element, $withcomments) {
     if ($tree->nodeType != XML_DOCUMENT_NODE) {
         $dom = $tree->ownerDocument;
@@ -153,11 +162,14 @@ function canonical($tree, $element, $withcomments) {
     }
 }
 
-/*
-$element - DOMElement for which to produce the canonical version of
-$exclusive - boolean to indicate exclusive canonicalization (must pass true)
-$withcomments - boolean indicating wether or not to include comments in canonicalized form
-*/
+/**
+ * do exclusive canonicalization
+ * @param DOMElement $element for which to produce the canonical version of
+ * @param bool $exclusive boolean to indicate exclusive canonicalization (must pass true)
+ * @param bool $withcomments boolean indicating wether or not to include comments in canonicalized form
+ * @return null|string
+ * @throws Exception
+ */
 function cfortnngeneral($element, $exclusive=false, $withcomments=false) {
     // IF PHP 5.2+ then use built in canonical functionality.
     $phpversion = explode('.', PHP_VERSION);
@@ -178,47 +190,117 @@ function cfortnngeneral($element, $exclusive=false, $withcomments=false) {
     canonical($copyydoc, $element, $withcomments);
     return $copyydoc->saveXML($copyydoc->documentElement, LIBXML_NOEMPTYTAG);
 }
+
 /**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   security
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class xml_security_key
+ * @package     auth_mo_saml
+ * @copyright  2007-2013 Robert Richards <rrichards@cdatazone.org>
+ * @license    http://www.opensource.org/licenses/bsd-license.php  BSD License
  */
 class xml_security_key {
+    /**
+     *
+     */
     const TRIPLEDES_CBC = 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc';
+    /**
+     *
+     */
     const AES128_CBC = 'http://www.w3.org/2001/04/xmlenc#aes128-cbc';
+    /**
+     *
+     */
     const AES192_CBC = 'http://www.w3.org/2001/04/xmlenc#aes192-cbc';
+    /**
+     *
+     */
     const AES256_CBC = 'http://www.w3.org/2001/04/xmlenc#aes256-cbc';
+    /**
+     *
+     */
     const RSA_1_5 = 'http://www.w3.org/2001/04/xmlenc#rsa-1_5';
+    /**
+     *
+     */
     const RSA_OAEP_MGF1P = 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p';
+    /**
+     *
+     */
     const DSA_SHA1 = 'http://www.w3.org/2000/09/xmldsig#dsa-sha1';
+    /**
+     *
+     */
     const RSA_SHA1 = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+    /**
+     *
+     */
     const RSA_SHA256 = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+    /**
+     *
+     */
     const RSA_SHA384 = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha384';
+    /**
+     *
+     */
     const RSA_SHA512 = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha512';
 
+    /**
+     * @var array
+     */
     private $crypttparams = array();
+    /**
+     * @var int
+     */
     public $type = 0;
+    /**
+     * @var null
+     */
     public $key = null;
+    /**
+     * @var string
+     */
     public $passphrase = "";
+    /**
+     * @var null
+     */
     public $iv = null;
+    /**
+     * @var null
+     */
     public $name = null;
+    /**
+     * @var null
+     */
     public $keychain = null;
+    /**
+     * @var bool
+     */
     public $issencrypted = false;
+    /**
+     * @var null
+     */
     public $encryptedctx = null;
+    /**
+     * @var null
+     */
     public $guid = null;
 
     /**
-     * This variable contains the certificate as a string if this key represents an X509-certificate.
+     * @var This variable contains the certificate as a string if this key represents an X509-certificate.
      * If this key doesn't represent a certificate, this will be null.
      */
     private $xxcertificate = null;
 
-    // This variable contains the certificate thunbprint if we have loaded an X509-certificate.
+    /**
+     * @var null This variable contains the certificate thunbprint if we have loaded an X509-certificate.
+     */
     private $xxthumbprint = null;
 
+    /**
+     * xml_security_key constructor.
+     * @param string $type
+     * @param array[] $params
+     * @throws Exception
+     */
     public function __construct($type, $params=null) {
         srand();
         switch ($type) {
@@ -344,6 +426,11 @@ class xml_security_key {
         return $this->crypttparams['keysize'];
     }
 
+    /**
+     * generate session key
+     * @return string
+     * @throws Exception
+     */
     public function generate_session_key() {
         if (!isset($this->crypttparams['keysize'])) {
             throw new Exception('Unknown key size for type "' . $this->type . '".');
@@ -353,9 +440,6 @@ class xml_security_key {
         if (function_exists('openssl_random_pseudo_bytes')) {
             // We have PHP >= 5.3 - use openssl to generate session key.
             $key = openssl_random_pseudo_bytes($keysize);
-        } else {
-            // Generating random key using iv generation routines.
-            $key = mcrypt_create_iv($keysize, MCRYPT_RAND);
         }
 
         if ($this->type === self::TRIPLEDES_CBC) {
@@ -377,6 +461,11 @@ class xml_security_key {
         return $key;
     }
 
+    /**
+     * get raw thumbprint
+     * @param mixed|string $cert
+     * @return null|string
+     */
     public static function get_raw_thumbprint($cert) {
 
         $arrcert = explode("\n", $cert);
@@ -403,6 +492,13 @@ class xml_security_key {
         return null;
     }
 
+    /**
+     * loads key
+     * @param mixed|string|string[] $key
+     * @param bool $issfile
+     * @param bool $isscert
+     * @throws Exception
+     */
     public function load_key($key, $issfile=false, $isscert = false) {
         if ($issfile) {
             $this->key = file_get_contents($key);
@@ -445,42 +541,12 @@ class xml_security_key {
         }
     }
 
-    private function encrypt_mcrypt($data) {
-        $td = mcrypt_module_open($this->crypttparams['cipher'], '', $this->crypttparams['mode'], '');
-        $this->iv = mcrypt_create_iv (mcrypt_enc_get_iv_size($td), MCRYPT_RAND);
-        mcrypt_generic_init($td, $this->key, $this->iv);
-        if ($this->crypttparams['mode'] == MCRYPT_MODE_CBC) {
-            $bs = mcrypt_enc_get_block_size($td);
-            for ($datalen0 = $datalen = strlen($data); (($datalen % $bs) != ($bs - 1)); $datalen++) {
-                $data .= chr(rand(1, 127));
-            }
-            $data .= chr($datalen - $datalen0 + 1);
-        }
-        $encryptedddata = $this->iv.mcrypt_generic($td, $data);
-        mcrypt_generic_deinit($td);
-        mcrypt_module_close($td);
-        return $encryptedddata;
-    }
 
-    private function decrypt_mcrypt($data) {
-        $td = mcrypt_module_open($this->crypttparams['cipher'], '', $this->crypttparams['mode'], '');
-        $ivlength = mcrypt_enc_get_iv_size($td);
-
-        $this->iv = substr($data, 0, $ivlength);
-        $data = substr($data, $ivlength);
-
-        mcrypt_generic_init($td, $this->key, $this->iv);
-        $decryptedddata = mdecrypt_generic($td, $data);
-        mcrypt_generic_deinit($td);
-        mcrypt_module_close($td);
-        if ($this->crypttparams['mode'] == MCRYPT_MODE_CBC) {
-            $datalen = strlen($decryptedddata);
-            $paddinglength = substr($decryptedddata, $datalen - 1, 1);
-            $decryptedddata = substr($decryptedddata, 0, $datalen - ord($paddinglength));
-        }
-        return $decryptedddata;
-    }
-
+    /**
+     * Encrypts data
+     * @param mixed|string $data
+     * @throws Exception
+     */
     private function encrypt_openssl($data) {
         if ($this->crypttparams['type'] == 'public') {
             if (! openssl_public_encrypt($data, $encryptedddata, $this->key, $this->crypttparams['padding'])) {
@@ -496,6 +562,11 @@ class xml_security_key {
         return $encryptedddata;
     }
 
+    /**
+     * Decrypts data
+     * @param mixed|string $data
+     * @throws Exception
+     */
     private function decrypt_openssl($data) {
         if ($this->crypttparams['type'] == 'public') {
             if (! openssl_public_decrypt($data, $decrypted, $this->key, $this->crypttparams['padding'])) {
@@ -511,6 +582,11 @@ class xml_security_key {
         return $decrypted;
     }
 
+    /**
+     * Add signature to the data
+     * @param mixed|string $data
+     * @throws Exception
+     */
     private function sign_openssl($data) {
         $algo = OPENSSL_ALGO_SHA1;
         if (! empty($this->crypttparams['digest'])) {
@@ -523,6 +599,12 @@ class xml_security_key {
         return $signature;
     }
 
+    /**
+     * verifies signature and data
+     * @param mixed|string $data
+     * @param DOMElement|mixed|string $signature
+     * @return int
+     */
     private function verify_openssl($data, $signature) {
         $algo = OPENSSL_ALGO_SHA1;
         if (! empty($this->crypttparams['digest'])) {
@@ -531,28 +613,35 @@ class xml_security_key {
         return openssl_verify ($data, $signature, $this->key, $algo);
     }
 
+    /**
+     * pass data to the encrypt_openssl() function and returns the encrypted data
+     * @param mixed|string $data
+     */
     public function encrypt_data($data) {
         switch ($this->crypttparams['library']) {
-            case 'mcrypt':
-                return $this->encrypt_mcrypt($data);
-                break;
             case 'openssl':
                 return $this->encrypt_openssl($data);
                 break;
         }
     }
 
+    /**
+     * pass data to the decrypt_openssl() function and returns the decrypted data
+     * @param mixed|string $data
+     */
     public function decrypt_data($data) {
         switch ($this->crypttparams['library']) {
-            case 'mcrypt':
-                return $this->decrypt_mcrypt($data);
-                break;
+
             case 'openssl':
                 return $this->decrypt_openssl($data);
                 break;
         }
     }
 
+    /**
+     * pass data to the sign_openssl() function to add the signature
+     * @param mixed|string $data
+     */
     public function sign_data($data) {
         switch ($this->crypttparams['library']) {
             case 'openssl':
@@ -561,6 +650,12 @@ class xml_security_key {
         }
     }
 
+    /**
+     * pass data and signature to the verify_openssl() function for verification
+     * @param mixed|string $data
+     * @param DOMElement|mixed|string $signature
+     * @return int
+     */
     public function verify_signature($data, $signature) {
         switch ($this->crypttparams['library']) {
             case 'openssl':
@@ -569,10 +664,20 @@ class xml_security_key {
         }
     }
 
+    /**
+     * Returns algorithm method
+     * @return mixed
+     */
     public function get_algorith() {
         return $this->crypttparams['method'];
     }
 
+    /**
+     * Makes the seagment and return the segment
+     * @param int $type
+     * @param string $string
+     * @return null|string
+     */
     public static function make_asn_segment($type, $string) {
         switch ($type){
             case 0x02:
@@ -599,7 +704,12 @@ class xml_security_key {
         return($output);
     }
 
-    // Modulus and Exponent must already be base64 decoded.
+    /**
+     * Modulus and Exponent must already be base64 decoded.
+     * @param string $modulus
+     * @param string $exponent
+     * @return string
+     */
     public static function convert_rsa($modulus, $exponent) {
         // Make an ASN publickeyinfo.
         $exponentencoding = self::make_asn_segment(0x02, $exponent);
@@ -620,6 +730,10 @@ class xml_security_key {
         return $encoding."-----END PUBLIC KEY-----\n";
     }
 
+    /**
+     * No body
+     * @param object $parent
+     */
     public function serialize_key($parent) {
 
     }
@@ -638,11 +752,12 @@ class xml_security_key {
         return $this->xxcertificate;
     }
 
-    /* Get the thumbprint of this X509 certificate.
+    /** Get the thumbprint of this X509 certificate.
      *
      * Returns:
      *  The thumbprint as a lowercase 40-character hexadecimal number, or null
      *  if this isn't a X509 certificate.
+     * @return null
      */
     public function get_xxthumbprint() {
         return $this->xxthumbprint;
@@ -669,54 +784,122 @@ class xml_security_key {
     }
 
 }
+
 /**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   security
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class xml_security_dsig
+ * @package     auth_mo_saml
+ * @copyright  2007-2013 Robert Richards <rrichards@cdatazone.org>
+ * @license    http://www.opensource.org/licenses/bsd-license.php  BSD License
  */
 class xml_security_dsig {
+    /**
+     *
+     */
     const XMLDSIGNS = 'http://www.w3.org/2000/09/xmldsig#';
+    /**
+     *
+     */
     const SHA1 = 'http://www.w3.org/2000/09/xmldsig#sha1';
+    /**
+     *
+     */
     const SHA256 = 'http://www.w3.org/2001/04/xmlenc#sha256';
+    /**
+     *
+     */
     const SHA384 = 'http://www.w3.org/2001/04/xmldsig-more#sha384';
+    /**
+     *
+     */
     const SHA512 = 'http://www.w3.org/2001/04/xmlenc#sha512';
+    /**
+     *
+     */
     const RIPEMD160 = 'http://www.w3.org/2001/04/xmlenc#ripemd160';
 
+    /**
+     *
+     */
     const C14N = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
+    /**
+     *
+     */
     const C14N_COMMENTS = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments';
+    /**
+     *
+     */
     const EXC_C14N = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+    /**
+     *
+     */
     const EXC_C14N_COMMENTS = 'http://www.w3.org/2001/10/xml-exc-c14n#WithComments';
+    /**
+     *
+     */
     const TEMPLATE = '<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
   <ds:SignedInfo>
     <ds:SignatureMethod />
   </ds:SignedInfo>
 </ds:Signature>';
 
+    /**
+     * @var DOMElement|null
+     */
     public $signode = null;
+    /**
+     * @var array
+     */
     public $idkeys = array();
+    /**
+     * @var array
+     */
     public $idns = array();
+    /**
+     * @var null
+     */
     private $signedinfo = null;
+    /**
+     * @var null
+     */
     private $xpathctx = null;
+    /**
+     * @var null
+     */
     private $canonicalmethod = null;
+    /**
+     * @var string
+     */
     private $prefix = 'ds';
+    /**
+     * @var string
+     */
     private $searchpfx = 'secdsig';
 
     // This variable contains an associative array of validated nodes.
+    /**
+     * @var null
+     */
     private $validatednodes = null;
 
+    /**
+     * xml_security_dsig constructor.
+     */
     public function __construct() {
         $sigdoc = new DOMDocument();
         $sigdoc->loadXML(self::TEMPLATE);
         $this->signode = $sigdoc->documentElement;
     }
 
+    /**
+     * reset_x_path_obj function
+     */
     private function reset_x_path_obj() {
         $this->xpathctx = null;
     }
 
+    /** get_x_path_obj function
+     * @return DOMXPath|null
+     */
     private function get_x_path_obj() {
         if (empty($this->xpathctx) && ! empty($this->signode)) {
             $xpath = new DOMXPath($this->signode->ownerDocument);
@@ -726,6 +909,11 @@ class xml_security_dsig {
         return $this->xpathctx;
     }
 
+    /**
+     * generates guid
+     * @param string $prefix
+     * @return string
+     */
     public static function generate_guid($prefix = 'pfx') {
         $uuid = md5(uniqid(rand(), true));
         $guid = $prefix.substr($uuid, 0, 8)."-".
@@ -736,6 +924,11 @@ class xml_security_dsig {
         return $guid;
     }
 
+    /**
+     * Locates the signature
+     * @param DOMDocument|object $objjdoc
+     * @return DOMElement|null
+     */
     public function locate_signature($objjdoc) {
         if ($objjdoc instanceof DOMDocument) {
             $doc = $objjdoc;
@@ -753,6 +946,12 @@ class xml_security_dsig {
         return null;
     }
 
+    /**
+     * creates the new signature node
+     * @param string $name
+     * @param string|null $value
+     * @return DOMElement
+     */
     public function create_new_sign_node($name, $value=null) {
         $doc = $this->signode->ownerDocument;
         if (! is_null($value)) {
@@ -763,6 +962,11 @@ class xml_security_dsig {
         return $node;
     }
 
+    /**
+     * sets canonical method
+     * @param string $method
+     * @throws Exception
+     */
     public function set_canonical_method($method) {
         switch ($method) {
             case 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315':
@@ -789,6 +993,15 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * canonicalize data
+     * @param DOMDocument|DOMDocument|DOMNode|object $node
+     * @param string $canonicalmethod
+     * @param string|null $arxxpath
+     * @param string[]|string|array|null $prefixlist
+     * @return null|string
+     * @throws Exception
+     */
     private function canonicalize_data($node, $canonicalmethod, $arxxpath=null, $prefixlist=null) {
         $exclusive = false;
         $withcomments = false;
@@ -823,6 +1036,10 @@ class xml_security_dsig {
         return $element->C14N($exclusive, $withcomments, $arxxpath, $prefixlist);
     }
 
+    /**
+     * canonicalize signed info
+     * @return null|string
+     */
     public function canonicalize_signed_info() {
 
         $doc = $this->signode->ownerDocument;
@@ -844,6 +1061,13 @@ class xml_security_dsig {
         return null;
     }
 
+    /**
+     * calculates digest
+     * @param string $digestalgorithm
+     * @param mixed|string $data
+     * @return string
+     * @throws Exception
+     */
     public function calculate_digest ($digestalgorithm, $data) {
         switch ($digestalgorithm) {
             case self::SHA1:
@@ -876,6 +1100,12 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * validates digest
+     * @param DOMNode|DOMElement|object $reffnode
+     * @param mixed|string $data
+     * @return bool
+     */
     public function validate_digest($reffnode, $data) {
         $xpath = new DOMXPath($reffnode->ownerDocument);
         $xpath->registerNamespace('secdsig', self::XMLDSIGNS);
@@ -887,6 +1117,13 @@ class xml_security_dsig {
         return ($diggvalue == $digesttvalue);
     }
 
+    /**
+     * processes transforms
+     * @param DOMNode|DOMElement|object $reffnode
+     * @param mixed|string $objjdata
+     * @param bool $includecommentnodes
+     * @return null|string
+     */
     public function process_transforms($reffnode, $objjdata, $includecommentnodes = true) {
         $data = $objjdata;
         $xpath = new DOMXPath($reffnode->ownerDocument);
@@ -970,6 +1207,12 @@ class xml_security_dsig {
         }
         return $data;
     }
+
+    /**
+     * process referenced node
+     * @param DOMElement|DOMNode|object $reffnode
+     * @return bool
+     */
     public function process_ref_node($reffnode) {
         $dataaobject = null;
 
@@ -1034,6 +1277,11 @@ class xml_security_dsig {
         return true;
     }
 
+    /**
+     * Returns referenced node id
+     * @param DOMNode|DOMElement|object $reffnode
+     * @return null
+     */
     public function get_ref_node_id($reffnode) {
         if ($uri = $reffnode->getAttribute("URI")) {
             $arrurl = parse_url($uri);
@@ -1045,6 +1293,12 @@ class xml_security_dsig {
         }
         return null;
     }
+
+    /**
+     * Returns referenced id's
+     * @return array
+     * @throws Exception
+     */
     public function get_ref_ids() {
         $refids = array();
         $doc = $this->signode->ownerDocument;
@@ -1061,6 +1315,11 @@ class xml_security_dsig {
         return $refids;
     }
 
+    /**
+     * validates reference
+     * @return bool
+     * @throws Exception
+     */
     public function validate_reference() {
         $doc = $this->signode->ownerDocument;
         if (! $doc->isSameNode($this->signode)) {
@@ -1086,6 +1345,14 @@ class xml_security_dsig {
         return true;
     }
 
+    /**
+     * adds reference internal
+     * @param DOMNode|DOMElement|object $sinfonode
+     * @param DOMNode|DOMElement|object $node
+     * @param string $algorithm
+     * @param array|string|null $arrtransforms
+     * @param array|null $options
+     */
     private function add_ref_internal($sinfonode, $node, $algorithm, $arrtransforms=null, $options=null) {
         $prefix = null;
         $prefixxns = null;
@@ -1164,6 +1431,13 @@ class xml_security_dsig {
         $reffnode->appendChild($digesttvalue);
     }
 
+    /**
+     * adds reference
+     * @param DOMElement|DOMNode|object $node
+     * @param string $algorithm
+     * @param array|null $arrtransforms
+     * @param array|null $options
+     */
     public function add_reference($node, $algorithm, $arrtransforms=null, $options=null) {
         if ($xpath = $this->get_x_path_obj()) {
             $query = "./secdsig:SignedInfo";
@@ -1174,6 +1448,13 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * adds reference list
+     * @param array $arnodes
+     * @param string $algorithm
+     * @param array|null $arrtransforms
+     * @param array|null $options
+     */
     public function add_reference_list($arnodes, $algorithm, $arrtransforms=null, $options=null) {
         if ($xpath = $this->get_x_path_obj()) {
             $query = "./secdsig:SignedInfo";
@@ -1186,6 +1467,13 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * adds object
+     * @param mixed|string $data
+     * @param string|object|null $mimetype
+     * @param string|object|null $encoding
+     * @return DOMElement
+     */
     public function add_object($data, $mimetype=null, $encoding=null) {
         $objnode = $this->create_new_sign_node('Object');
         $this->signode->appendChild($objnode);
@@ -1206,6 +1494,11 @@ class xml_security_dsig {
         return $objnode;
     }
 
+    /**
+     * locates key
+     * @param null $node
+     * @return null|xml_security_key
+     */
     public function locate_key($node=null) {
         if (empty($node)) {
             $node = $this->signode;
@@ -1230,6 +1523,12 @@ class xml_security_dsig {
         return null;
     }
 
+    /**
+     * Call the function to verify the signature
+     * @param xml_security_key|object $objjkey
+     * @return mixed
+     * @throws Exception
+     */
     public function verify($objjkey) {
         $doc = $this->signode->ownerDocument;
         $xpath = new DOMXPath($doc);
@@ -1242,10 +1541,21 @@ class xml_security_dsig {
         return $objjkey->verify_signature($this->signedinfo, base64_decode($sigvalue));
     }
 
+    /**
+     * Returns signature data
+     * @param xml_security_key|string|object $objjkey
+     * @param mixed|string $data
+     * @return mixed
+     */
     public function sign_data($objjkey, $data) {
         return $objjkey->sign_data($data);
     }
 
+    /**
+     * adds the signature node
+     * @param xml_security_key|string|object $objjkey
+     * @param DOMNode|DOMElement|object|null $appendtonode
+     */
     public function sign($objjkey, $appendtonode = null) {
         // If we have a parent node append it now so C14N properly works.
         if ($appendtonode != null) {
@@ -1273,10 +1583,18 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * appends certificate
+     */
     public function append_cert() {
 
     }
 
+    /**
+     * appends key
+     * @param xml_security_key|string|object $objjkey
+     * @param null $parent
+     */
     public function append_key($objjkey, $parent=null) {
         $objjkey->serialize_key($parent);
     }
@@ -1288,8 +1606,8 @@ class xml_security_dsig {
      * The signature element will be appended to the element, unless $beforenode is specified. If $beforenode
      * is specified, the signature element will be inserted as the last element before $beforenode.
      *
-     * @param $node  The node the signature element should be inserted into.
-     * @param $beforenode  The node the signature element should be located before.
+     * @param DOMNode|DOMElement|object $node The node the signature element should be inserted into.
+     * @param DOMNode|DOMElement|object $beforenode The node the signature element should be located before.
      *
      * @return DOMNode The signature element node
      */
@@ -1305,11 +1623,23 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * appends signature
+     * @param DOMNode|DOMElement|object $parentnode
+     * @param bool $insertbefore
+     * @return DOMNode
+     */
     public function append_signature($parentnode, $insertbefore = false) {
         $beforenode = $insertbefore ? $parentnode->firstChild : null;
         return $this->insert_signature($parentnode, $beforenode);
     }
 
+    /**
+     * Returns the x509 certificate
+     * @param mixed|string $cert
+     * @param bool $ispemformat
+     * @return mixed|string
+     */
     public static function get_509x_cert($cert, $ispemformat=true) {
         $certs = self::static_get_x509_xcerts($cert, $ispemformat);
         if (! empty($certs)) {
@@ -1318,6 +1648,12 @@ class xml_security_dsig {
         return '';
     }
 
+    /**
+     * Returns the static x509 certificate
+     * @param mixed|string[]|array $certs
+     * @param bool $ispemformat
+     * @return array
+     */
     public static function static_get_x509_xcerts($certs, $ispemformat=true) {
         if ($ispemformat) {
             $data = '';
@@ -1345,6 +1681,16 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * adds the static x509 certificate
+     * @param DOMElement|DOMNode|object $parentref
+     * @param mixed|string $cert
+     * @param bool $ispemformat
+     * @param bool $isurl
+     * @param string|array|null $xpath
+     * @param string[]|array|null $options
+     * @throws Exception
+     */
     public static function static_add509_cert($parentref, $cert, $ispemformat=true, $isurl=false, $xpath=null, $options=null) {
         if ($isurl) {
             $cert = file_get_contents($cert);
@@ -1425,59 +1771,109 @@ class xml_security_dsig {
         }
     }
 
+    /**
+     * call the function to add x509 certificate
+     * @param mixed|string $cert
+     * @param bool $ispemformat
+     * @param bool $isurl
+     * @param string[]|array|null $options
+     */
     public function add_x509_cert($cert, $ispemformat=true, $isurl=false, $options=null) {
         if ($xpath = $this->get_x_path_obj()) {
             self::static_add509_cert($this->signode, $cert, $ispemformat, $isurl, $xpath, $options);
         }
     }
 
-    /* This function retrieves an associative array of the validated nodes.
+    /** This function retrieves an associative array of the validated nodes.
      *
      * The array will contain the id of the referenced node as the key and the node itself
      * as the value.
      *
      * Returns:
      *  An associative array of validated nodes or null if no nodes have been validated.
+     * @return null
      */
     public function get_validated_nodes() {
         return $this->validatednodes;
     }
 }
+
 /**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   security
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class xml_sec_enc
+ * @package     auth_mo_saml
+ * @copyright  2007-2013 Robert Richards <rrichards@cdatazone.org>
+ * @license    http://www.opensource.org/licenses/bsd-license.php  BSD License
  */
 class xml_sec_enc {
+    /**
+     *
+     */
     const TEMPLATE = "<xenc:EncryptedData xmlns:xenc='http://www.w3.org/2001/04/xmlenc#'>
    <xenc:CipherData>
       <xenc:CipherValue></xenc:CipherValue>
    </xenc:CipherData>
 </xenc:EncryptedData>";
 
+    /**
+     *
+     */
     const ELEMENT = 'http://www.w3.org/2001/04/xmlenc#Element';
+    /**
+     *
+     */
     const CONTENT = 'http://www.w3.org/2001/04/xmlenc#Content';
+    /**
+     *
+     */
     const URI = 3;
+    /**
+     *
+     */
     const XMLENCNS = 'http://www.w3.org/2001/04/xmlenc#';
 
+    /**
+     * @var null
+     */
     private $encdoc = null;
+    /**
+     * @var null
+     */
     private $rawnode = null;
+    /**
+     * @var null
+     */
     public $type = null;
+    /**
+     * @var null
+     */
     public $enckey = null;
+    /**
+     * @var array
+     */
     private $references = array();
 
+    /**
+     * xml_sec_enc constructor.
+     */
     public function __construct() {
         $this->_reset_template();
     }
 
+    /**
+     * Resets template
+     */
     private function _reset_template() {
         $this->encdoc = new DOMDocument();
         $this->encdoc->loadXML(self::TEMPLATE);
     }
 
+    /**
+     * adds reference
+     * @param string $name
+     * @param DOMNode|DOMElement|object $node
+     * @param string|object $type
+     * @throws Exception
+     */
     public function add_reference($name, $node, $type) {
         if (! $node instanceOf DOMNode) {
             throw new Exception('$node is not of type DOMNode');
@@ -1492,6 +1888,10 @@ class xml_sec_enc {
         $this->references[$name] = array("node" => $node, "type" => $type, "encnode" => $encdoc, "refuri" => $refuri);
     }
 
+    /**
+     * sets node
+     * @param DOMNode|DOMElement|object $node
+     */
     public function set_node($node) {
         $this->rawnode = $node;
     }
@@ -1499,9 +1899,9 @@ class xml_sec_enc {
     /**
      * Encrypt the selected node with the given key.
      *
-     * @param xml_security_key $objjkey  The encryption key and algorithm.
-     * @param bool $replace  Whether the encrypted node should be replaced in the original tree. Default is true.
-     * @return DOMElement  The <xenc:EncryptedData>-element.
+     * @param xml_security_key $objjkey The encryption key and algorithm.
+     * @param bool $replace Whether the encrypted node should be replaced in the original tree. Default is true.
+     * @return DOMElement The <xenc:EncryptedData>-element.
      */
     public function encrypt_node($objjkey, $replace=true) {
         $data = '';
@@ -1568,6 +1968,11 @@ class xml_sec_enc {
         }
     }
 
+    /**
+     * encrypts references
+     * @param xml_security_key|string|object $objjkey
+     * @throws Exception
+     */
     public function encrypt_references($objjkey) {
         $currawnode = $this->rawnode;
         $curtype = $this->type;
@@ -1621,9 +2026,9 @@ class xml_sec_enc {
      * If $replace is true, we will insert the decrypted element(s) into the
      * document, and return the decrypted element(s).
      *
-     * @params xml_security_key $objjkey  The decryption key that should be used when decrypting the node.
-     * @params boolean $replace  Whether we should replace the encrypted node in the XML document with the decrypted data.
-     * @The default is true.
+     * @param xml_security_key $objjkey The decryption key that should be used when decrypting the node.
+     * @param boolean $replace Whether we should replace the encrypted node in the XML document with the decrypted data.
+     * The default is true.
      * @return string|DOMElement  The decrypted data.
      */
     public function decrypt_node($objjkey, $replace=true) {
@@ -1669,6 +2074,13 @@ class xml_sec_enc {
         }
     }
 
+    /**
+     * Encrypts the key
+     * @param xml_security_key|string|object $srckey
+     * @param xml_security_key|string|object $rawkey
+     * @param bool $append
+     * @throws Exception
+     */
     public function encrypt_key($srckey, $rawkey, $append=true) {
         if ((! $srckey instanceof xml_security_key) || (! $rawkey instanceof xml_security_key)) {
             throw new Exception('Invalid Key');
@@ -1703,6 +2115,12 @@ class xml_sec_enc {
         return;
     }
 
+    /**
+     * Decrypts the key
+     * @param xml_security_key|string|object $enckey
+     * @return DOMElement|string
+     * @throws Exception
+     */
     public function decrypt_key($enckey) {
         if (! $enckey->issencrypted) {
             throw new Exception("Key is not Encrypted");
@@ -1713,6 +2131,11 @@ class xml_sec_enc {
         return $this->decrypt_node($enckey, false);
     }
 
+    /**
+     * locates encrypted data
+     * @param DOMElement|DOMNode|object $element
+     * @return DOMElement|null
+     */
     public function locate_encrypted_data($element) {
         if ($element instanceof DOMDocument) {
             $doc = $element;
@@ -1728,6 +2151,11 @@ class xml_sec_enc {
         return null;
     }
 
+    /**
+     * locates key
+     * @param null $node
+     * @return null|xml_security_key
+     */
     public function locate_key($node=null) {
         if (empty($node)) {
             $node = $this->rawnode;
@@ -1753,6 +2181,13 @@ class xml_sec_enc {
         return null;
     }
 
+    /**
+     * Returns the static key info
+     * @param null $objbasekey
+     * @param null $node
+     * @return null|xml_security_key
+     * @throws Exception
+     */
     public static function static_locate_key_info($objbasekey=null, $node=null) {
         if (empty($node) || (! $node instanceof DOMNode)) {
             return null;
@@ -1842,6 +2277,12 @@ class xml_sec_enc {
         return $objbasekey;
     }
 
+    /**
+     * Call the function to return the static key info
+     * @param null $objbasekey
+     * @param null $node
+     * @return null|xml_security_key
+     */
     public function locate_key_info($objbasekey=null, $node=null) {
         if (empty($node)) {
             $node = $this->rawnode;

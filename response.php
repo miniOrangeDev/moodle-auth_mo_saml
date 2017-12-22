@@ -20,42 +20,41 @@
  * Contains validation of saml element.
  *
  * @copyright   2017  miniOrange
- * @category    authentication
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 defined('MOODLE_INTERNAL') || die();
 require_once('assertion.php');
 /**
  * Class for SAML2 Response messages.
- *
- */
-/**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   response
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package     auth_mo_saml
+ * @copyright   2017  miniOrange
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
  */
 class saml_response_class {
     /**
-     * The assertions in this response.
+     * @var The assertions in this response.
      */
     private $assertions;
 
     /**
-     * The destination URL in this response.
+     * @var The destination URL in this response.
      */
     private $destination;
 
+    /**
+     * @var
+     */
     private $certificates;
+    /**
+     * @var array|bool
+     */
     private $signaturedata;
 
     /**
      * Constructor for SAML 2 response messages.
      *
-     * @param DOMElement|null $xml The input message.
+     * @param DOMElement $xml The input message.
      */
     public function __construct(DOMElement $xml = null) {
 
@@ -107,6 +106,10 @@ class saml_response_class {
         $this->assertions = $assertions;
     }
 
+    /**
+     * Returns the destination
+     * @return string
+     */
     public function get_destination() {
         return $this->destination;
     }
@@ -126,10 +129,18 @@ class saml_response_class {
         return $root;
     }
 
+    /**
+     * Return the certificates present in assertion
+     * @return mixed
+     */
     public function get_certificates() {
         return $this->certificates;
     }
 
+    /**
+     * Returns the signature data present in assertion
+     * @return array|bool
+     */
     public function get_signature_data() {
         return $this->signaturedata;
     }

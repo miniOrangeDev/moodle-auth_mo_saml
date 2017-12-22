@@ -18,14 +18,13 @@
  * Contains version related information.
  *
  * @copyright   2017  miniOrange
- * @category    document
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 defined('MOODLE_INTERNAL') || die();
-$plugin->requires = 2015040500;   // Requires Moodle 2.9 or less.
-$plugin->release = 'v1.0-r2';
+$plugin->requires = 2014051200;   // Requires Moodle 2.7 or later.
+$plugin->release = 'v1.0-r9';
 $plugin->component = 'auth_mo_saml';
-$plugin->version = 2017100501;    // YYYYMMDDXX.
+$plugin->version = 2017122201;    // YYYYMMDDXX.
 $plugin->cron = 0;     // Time in sec.
 $plugin->maturity = MATURITY_STABLE;

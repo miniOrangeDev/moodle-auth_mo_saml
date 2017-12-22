@@ -20,9 +20,8 @@
  * Redirect here for saml request and response purpose
  *
  * @copyright   2017  miniOrange
- * @category    authentication
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 require(__DIR__ . '/../../config.php');
 require_once('response.php');
@@ -140,7 +139,6 @@ if ( array_key_exists('SAMLResponse', $_POST) && !empty($_POST['SAMLResponse']))
             $USER->loggedin = true;
             $USER->site = $CFG->wwwroot;
             $USER = get_complete_user_data('id', $USER->id);
-
             // Everywhere we can access user by its id.
             complete_user_login($USER);
             // Here user get login with its all field assigned.

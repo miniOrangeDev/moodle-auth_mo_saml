@@ -18,26 +18,33 @@
  * This library is miniOrange Authentication Service.
  *
  * @copyright   2017  miniOrange
- * @category    authentication
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 require_once('../../config.php');
 require_once('xmlseclibs.php');
+
 /**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   utilities
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class utilities
+ * @package     auth_mo_saml
+ * @copyright   2017  miniOrange
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
  */
 class utilities {
 
+    /**
+     * generates the random id
+     * @return string
+     */
     public static function generate_id() {
         return '_' . self::string_to_hex(self::generate_random_bytes(21));
     }
 
+    /**
+     * Convert the string to hex
+     * @param string $bytes
+     * @return string
+     */
     public static function string_to_hex($bytes) {
         $ret = '';
         for ($i = 0; $i < strlen($bytes); $i++) {
@@ -46,11 +53,24 @@ class utilities {
         return $ret;
     }
 
+    /**
+     * Generates random bytes
+     * @param int $length
+     * @param bool $fallback
+     * @return string
+     */
     public static function generate_random_bytes($length, $fallback = true) {
         assert('is_int($length)');
         return openssl_random_pseudo_bytes($length);
     }
 
+    /**
+     * Prepares authentication request
+     * @param string $acsurl
+     * @param string $issuer
+     * @param string $forceauthn
+     * @return string
+     */
     public static function create_authn_request($acsurl, $issuer, $forceauthn = 'false') {
         $requestxmlstr = '<?xml version="1.0" encoding="UTF-8"?>' .
                         '<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="' . self::generate_id() .
@@ -68,6 +88,11 @@ class utilities {
         return $urlencoded;
     }
 
+    /**
+     * Generates timestamp value
+     * @param null $instant
+     * @return false|string
+     */
     public static function generate_timestamp($instant = null) {
         if ($instant === null) {
             $instant = time();
@@ -75,6 +100,12 @@ class utilities {
         return gmdate('Y-m-d\TH:i:s\Z', $instant);
     }
 
+    /**
+     * Querying xml data
+     * @param DOMNode $node
+     * @param string $query
+     * @return array
+     */
     public static function xpquery(DOMNode $node, $query) {
         assert('is_string($query)');
         static $xpcache = null;
@@ -104,6 +135,11 @@ class utilities {
         return $ret;
     }
 
+    /**
+     * Parses and returns nameid from xml
+     * @param DOMElement $xml
+     * @return array
+     */
     public static function parse_name_id(DOMElement $xml) {
         $ret = array('Value' => trim($xml->textContent));
 
@@ -116,6 +152,11 @@ class utilities {
         return $ret;
     }
 
+    /**
+     * Convert datetime value to timestamp
+     * @param string $time
+     * @return int
+     */
     public static function xs_date_time_to_timestamp($time) {
         $matches = array();
 
@@ -141,6 +182,13 @@ class utilities {
         return $ts;
     }
 
+    /**
+     * Extract textContent from DOMElement
+     * @param DOMElement $parent
+     * @param string $namespaceuri
+     * @param string $localname
+     * @return array
+     */
     public static function extract_strings(DOMElement $parent, $namespaceuri, $localname) {
         assert('is_string($namespaceuri)');
         assert('is_string($localname)');
@@ -156,6 +204,11 @@ class utilities {
         return $ret;
     }
 
+    /**
+     * Validates the DOMElement
+     * @param DOMElement $root
+     * @return array|bool
+     */
     public static function validate_element(DOMElement $root) {
 
         // Create an XML security object.
@@ -192,7 +245,7 @@ class utilities {
                 $rootsigned = true;
                 break;
             } else if ($root->parentNode instanceof DOMDocument && $signednode->isSameNode($root->ownerDocument)) {
-                // Root is the root element of a signed document.
+                // ...$root is the root element of a signed document.
                 $rootsigned = true;
                 break;
             }
@@ -217,6 +270,12 @@ class utilities {
             );
         return $ret;
     }
+
+    /**
+     * Validates the signature
+     * @param array $info
+     * @param xml_security_key $key
+     */
     public static function validate_signature(array $info, xml_security_key $key) {
         assert('array_key_exists("Signature", $info)');
 
@@ -246,6 +305,13 @@ class utilities {
         }
     }
 
+    /**
+     * Parse the key and key details
+     * @param xml_security_key $key
+     * @param string $algorithm
+     * @param string $type
+     * @return xml_security_key
+     */
     public static function cast_key(xml_security_key $key, $algorithm, $type = 'public') {
         assert('is_string($algorithm)');
         assert('$type === "public" || $type === "private"');
@@ -270,8 +336,16 @@ class utilities {
         return $newkey;
     }
 
+    /**
+     * Validates the recieved response
+     * @param string $currenturl
+     * @param array $certfingerprint
+     * @param mixed $signaturedata
+     * @param saml_response_class $response
+     * @return bool
+     */
     public static function process_response($currenturl, $certfingerprint, $signaturedata,
-        saml_response_class $response) {
+                                            saml_response_class $response) {
 
         $assertion = current($response->get_assertions());
 
@@ -311,6 +385,13 @@ class utilities {
         return $responsesigned;
     }
 
+    /**
+     * Validates the signature
+     * @param array $certfingerprint
+     * @param mixed $signaturedata
+     * @return bool
+     * @throws Exception
+     */
     public static function check_sign($certfingerprint, $signaturedata) {
         $certificates = $signaturedata['Certificates'];
 
@@ -345,6 +426,13 @@ class utilities {
 
     }
 
+    /**
+     * Validates the issuer and audience URI
+     * @param saml_response_class $samlresponse
+     * @param string $spentityid
+     * @param string $issuertovalidateagainst
+     * @return bool
+     */
     public static function validate_issuer_and_audience($samlresponse, $spentityid, $issuertovalidateagainst) {
         $issuer = current($samlresponse->get_assertions())->get_issuer();
         $assertion = current($samlresponse->get_assertions());
@@ -364,6 +452,12 @@ class utilities {
         }
     }
 
+    /**
+     * Returns the certificate
+     * @param array $certfingerprints
+     * @param array $certificates
+     * @return string
+     */
     private static function find_certificate(array $certfingerprints, array $certificates) {
 
         $candidates = array();
@@ -392,10 +486,10 @@ class utilities {
          *
          * This is an internal helper function.
          *
-         * @param  DOMElement     $encrypteddata The encrypted data.
-         * @param  xml_security_key $inputkey      The decryption key.
-         * @param  array          &$blacklist    Blacklisted decryption algorithms.
-         * @return DOMElement     The decrypted element.
+         * @param  DOMElement $encrypteddata The encrypted data.
+         * @param  xml_security_key $inputkey The decryption key.
+         * @param  array $blacklist Blacklisted decryption algorithms.
+         * @return DOMElement The decrypted element.
          * @throws Exception
          */
     private static function do_decrypt_element(DOMElement $encrypteddata, xml_security_key $inputkey, array &$blacklist) {
@@ -522,9 +616,10 @@ class utilities {
     /**
      * Decrypt an encrypted element.
      *
-     * @param  DOMElement     $encrypteddata The encrypted data.
-     * @param  xml_security_key $inputkey      The decryption key.
-     * @param  array          $blacklist     Blacklisted decryption algorithms.
+     * @param  DOMElement $encrypteddata The encrypted data.
+     * @param  xml_security_key $inputkey The decryption key.
+     * @param  array $blacklist Blacklisted decryption algorithms.
+     * @param  xml_security_key $alternatekey
      * @return DOMElement     The decrypted element.
      * @throws Exception
      */
@@ -553,14 +648,7 @@ class utilities {
     /**
      * Generates the metadata of the SP based on the settings
      *
-     * @param string    $sp            The SP data
-     * @param string    $authnsign     authnRequestsSigned attribute
-     * @param string    $wsign         wantAssertionsSigned attribute
-     * @param DateTime  $validUntil    Metadata's valid time
-     * @param Timestamp $cacheDuration Duration of the cache in seconds
-     * @param array     $contacts      Contacts info
-     * @param array     $organization  Organization ingo
-     *
+     * @param string $siteurl
      * @return string SAML Metadata XML
      */
     public static function metadata_builder($siteurl) {
@@ -587,6 +675,12 @@ class utilities {
         $xml->save(plugins_url()."/miniorange-saml-20-single-sign-on/sp-metadata.xml");
     }
 
+    /**
+     * Returns group array
+     * @param object $samlparams
+     * @param array $samlgroups
+     * @return array
+     */
     public static function get_mapped_groups($samlparams, $samlgroups) {
             $groups = array();
 
@@ -620,6 +714,11 @@ class utilities {
     }
 
 
+    /**
+     * Returns the encryption algorithm
+     * @param string $method
+     * @return string
+     */
     public static function get_encryption_algorithm($method) {
         switch($method) {
             case 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc':
@@ -672,7 +771,12 @@ class utilities {
         }
     }
 
-    public static function sanitize_certificate( $certificate ) {
+    /**
+     * sanitize certificate by adding "BEGIN CERTIFICATE" and "END CERTIFICATE" lines
+     * @param mixed|string $certificate
+     * @return mixed|string
+     */
+    public static function sanitize_certificate($certificate ) {
         $certificate = preg_replace("/[\r\n]+/", "", $certificate);
         $certificate = str_replace( "-", "", $certificate );
         $certificate = str_replace( "BEGIN CERTIFICATE", "", $certificate );
@@ -683,7 +787,12 @@ class utilities {
         return $certificate;
     }
 
-    public static function desanitize_certificate( $certificate ) {
+    /**
+     * Desanitize certificate by removing "BEGIN CERTIFICATE" and "END CERTIFICATE" lines
+     * @param mixed|string $certificate
+     * @return mixed
+     */
+    public static function desanitize_certificate($certificate ) {
         $certificate = preg_replace("/[\r\n]+/", "", $certificate);
         $certificate = str_replace( "-----BEGIN CERTIFICATE-----", "", $certificate );
         $certificate = str_replace( "-----END CERTIFICATE-----", "", $certificate );

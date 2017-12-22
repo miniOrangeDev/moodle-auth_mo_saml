@@ -20,35 +20,50 @@
  * Contains important method for customer registration.
  *
  * @copyright   2017  miniOrange
- * @category    authentication
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
  defined('MOODLE_INTERNAL') || die();
+
+
 /**
- * Auth external functions
- *
- * @package    mo_saml
- * @category   registration
- * @copyright  2017 miniOrange
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class customer_saml
+ * @package     auth_mo_saml
+ * @copyright   2017  miniOrange
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
  */
 class customer_saml {
+
+    /**
+     * @var $email contains email of admin.
+     */
     public $email;
-    /** @var $email contains email of admin.*/
+    /**
+     * @var $phone contains phone number of admin.
+     */
     public $phone;
-    /** @var $phone contains phone number of admin.*/
+
     /*
      * * Initial values are hardcoded to support the miniOrange framework to generate OTP for email.
      * * We need the default value for creating the first time,
      * * As we don't have the Default keys available before registering the user to our server.
      * * This default values are only required for sending an One Time Passcode at the user provided email address.
      */
-    private $defaultcustomerkey = '16555';
-    /** @var $defaultcustomerkey contains default customer key of admin.*/
-    private $defaultapikey = 'fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq';
-    /** @var $defaultapikey contains default api key of admin.*/
 
+    /**
+     * @var $defaultcustomerkey contains default customer key of admin.
+     */
+    private $defaultcustomerkey = '16555';
+    /**
+     * @var $defaultapikey contains default api key of admin.
+     */
+    private $defaultapikey = 'fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq';
+
+
+    /**
+     * Creates the customer
+     * @return mixed
+     */
     public function create_customer() {
         $config = get_config('auth/mo_saml');
         $url = $config->hostname.'/moas/rest/customer/add';
@@ -92,6 +107,11 @@ class customer_saml {
         curl_close ( $ch );
         return $content;
     }
+
+    /**
+     * Gets customer key
+     * @return mixed
+     */
     public function get_customer_key() {
         $config = get_config('auth/mo_saml');
         $url = $config->hostname.'/moas/rest/customer/key';
@@ -126,6 +146,11 @@ class customer_saml {
         curl_close ( $ch );
         return $content;
     }
+
+    /**
+     * Check whether customer entry exists
+     * @return mixed
+     */
     public function check_customer() {
         $config = get_config('auth/mo_saml');
         $url = $config->hostname.'/moas/rest/customer/check-if-exists';
@@ -159,6 +184,15 @@ class customer_saml {
 
         return $content;
     }
+
+    /**
+     * Send OTP token to the customer
+     * @param string $email
+     * @param string $phone
+     * @param bool $sendtoemail
+     * @param bool $sendtophone
+     * @return mixed
+     */
     public function send_otp_token($email, $phone, $sendtoemail = true, $sendtophone = false) {
         $config = get_config('auth/mo_saml');
         $url = $config->hostname.'/moas/api/auth/challenge';
@@ -213,6 +247,13 @@ class customer_saml {
         curl_close ( $ch );
         return $content;
     }
+
+    /**
+     * Validates the entered OTP token
+     * @param string $transactionide
+     * @param string $otptoken
+     * @return mixed
+     */
     public function validate_otp_token($transactionide, $otptoken) {
         $config = get_config('auth/mo_saml');
         $url = $config->hostname.'/moas/api/auth/validate';
@@ -259,12 +300,20 @@ class customer_saml {
         curl_close ( $ch );
         return $content;
     }
+
+    /**
+     * Submit the customer query
+     * @param string $email
+     * @param string $phone
+     * @param string $query
+     * @return bool
+     */
     public function submit_contact_us($email, $phone, $query) {
         $config = get_config('auth/mo_saml');
         $query = '[MOODLE SAML 2.0 SP SSO Plugin] ' . $query;
         $fields = array (
-                'firstname' => $config->regfirstname,
-                'lastname' => $config->reglastname,
+                'firstName' => $config->regfirstname,
+                'lastName' => $config->reglastname,
                 'company' => $_SERVER ['SERVER_NAME'],
                 'email' => $email,
                 'phone' => $phone,
@@ -297,6 +346,11 @@ class customer_saml {
         curl_close ( $ch );
         return true;
     }
+
+    /**
+     * Saves the IDP configuration details
+     * @return mixed
+     */
     public function save_external_idp_config() {
         global $CFG;
         $config = get_config('auth/mo_saml');
@@ -351,6 +405,12 @@ class customer_saml {
         curl_close ( $ch );
         return $content;
     }
+
+    /**
+     * Handles the forgot password operation
+     * @param string $email
+     * @return mixed
+     */
     public function mo_saml_forgot_password($email) {
         $config = get_config('auth/mo_saml');
         $url = $config->hostname.'/moas/rest/customer/password-reset';

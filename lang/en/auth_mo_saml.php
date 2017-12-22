@@ -20,9 +20,8 @@
  * Contains language oriented things.
  *
  * @copyright   2017  miniOrange
- * @category    dictionary
  * @license     http://www.gnu.org/copyleft/gpl.html GNU/GPL v3 or later, see license.txt
- * @package     mo_saml
+ * @package     auth_mo_saml
  */
 $string['auth_mo_samltitle'] = 'miniOrange SAML SSO for moodle';
 $string['auth_mo_samldescription'] = '';
